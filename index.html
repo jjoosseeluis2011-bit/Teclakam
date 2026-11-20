@@ -1,0 +1,194 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0B0D12"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><title>KeyCam Pro Remote</title>
+<style>
+:root{--bg:#0B0D12;--gl:rgba(20,24,36,.74);--ac:#38bdf8;--tx:#f2f5fa;--mu:#8b95a7}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font:500 14px/1.3 Inter,system-ui,-apple-system,Roboto,sans-serif;overflow:hidden}
+canvas{position:fixed;inset:0;width:100%;height:100%;object-fit:contain;touch-action:none;background:#000}
+video.h{position:fixed;width:2px;height:2px;opacity:0;pointer-events:none}
+.scr{position:fixed;inset:0;display:none}.scr.on{display:block}
+.pad{padding:max(14px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}
+button,select,input,textarea{font:inherit;color:inherit}
+.g{background:var(--gl);backdrop-filter:blur(10px);border:0;border-radius:14px;padding:9px 12px;min-width:44px;min-height:44px}
+button.g{cursor:pointer}button.g.on{background:var(--ac);color:#06202e}
+#home{display:none;place-content:center;gap:14px;text-align:center;background:radial-gradient(120% 80% at 50% 0,#17202f,var(--bg))}#home.on{display:grid}
+#home h1{font-size:34px;margin:0;letter-spacing:-.02em}#home h1 b{color:var(--ac)}#home p{color:var(--mu);margin:0 0 10px}
+#home button{padding:18px 26px;font-size:17px}
+.top{position:absolute;left:0;right:0;top:0;display:flex;gap:8px;align-items:center}.top .sp{flex:1}
+#rec{width:48px;height:48px;border-radius:50%;background:#fff;border:0;display:grid;place-items:center;padding:0}#rec i{width:22px;height:22px;border-radius:50%;background:#ef4444;transition:.15s}#rec.on i{border-radius:5px;width:18px;height:18px}
+.rail{position:absolute;right:0;top:64px;bottom:0;display:flex;flex-direction:column;gap:8px;justify-content:center}.rail .g{font-size:12px;text-align:center}
+.lk{position:absolute;left:0;top:64px}
+#sheet{position:absolute;left:0;right:0;bottom:0;max-height:78%;overflow:auto;background:#141824;border-radius:20px 20px 0 0;padding:16px;display:none}#sheet.on{display:block}
+#sheet label{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #222a3a}#sheet h3{margin:14px 0 2px;font-size:13px;color:var(--ac)}
+#sheet select,#sheet textarea{background:#0B0D12;border:1px solid #2a3347;border-radius:8px;padding:6px}textarea{width:100%;height:64px;font-size:11px}
+#toast{position:absolute;left:50%;top:70px;transform:translateX(-50%);background:var(--gl);padding:8px 14px;border-radius:12px;display:none}
+#cm{background:#000}#pv{width:100%;height:100%;object-fit:cover}#cm .box{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,#000c 30%);display:grid;gap:8px}
+</style></head><body>
+<canvas id="cv" width="1280" height="720"></canvas><video id="v" class="h" muted playsinline autoplay></video><video id="rv" class="h" muted playsinline autoplay></video>
+<div id="home" class="scr on pad"><h1>KeyCam <b>Pro</b> Remote</h1><p>Grave vídeo, MIDI e acordes do seu teclado.</p><button class="g" id="goS">Modo Estúdio (perto do teclado)</button><button class="g" id="goC">Modo Câmera Remota (no tripé)</button></div>
+<div id="st" class="scr pad"><div class="top"><button id="rec" aria-label="Gravar"><i></i></button><button class="g" id="pause" hidden>Pausar</button><b id="tc">00:00</b><span class="sp"></span><span class="g" id="mb">MIDI —</span><span class="g" id="sb">LOCAL</span></div>
+<div id="vu" style="position:absolute;left:14px;top:124px;bottom:30%;width:8px;background:#0007;border-radius:4px;overflow:hidden"><i id="vb" style="position:absolute;bottom:0;left:0;right:0;height:0;background:linear-gradient(0deg,#22c55e 60%,#facc15 85%,#ef4444)"></i></div><button class="g lk" id="lock">Mover</button>
+<div class="rail"><button class="g" data-z=".5">0,5x</button><button class="g" data-z="1">1x</button><button class="g" data-z="2">2x</button><button class="g" data-z="3">3x</button><button class="g" id="cyc">Câmera</button><button class="g" id="cfg">Config.</button></div>
+<div id="toast"></div>
+<div id="sheet"><b>Configurações</b>
+<h3>Teclado virtual</h3>
+<label>Teclas<select data-k="keys"><option>37<option>49<option selected>61<option>76<option>88</select></label>
+<label>Largura<input type="range" data-k="kw" min=".2" max="1" step=".01"></label>
+<label>Altura das teclas<input type="range" data-k="kh" min=".05" max=".4" step=".01"></label>
+<label>Inclinação 3D<input type="range" data-k="tilt" min="0" max="60"></label>
+<label>Rotação<input type="range" data-k="rot" min="-180" max="180"></label>
+<label>Cor das notas<input type="color" data-k="color"></label>
+<label>Pitch e Mod<input type="checkbox" data-k="wheels"></label>
+<h3>Sustain (CC#64)</h3>
+<label>Modo<select data-k="sus"><option value="ignore">Ignorar sustain<option value="hold">Normal (segurar teclas)<option value="dual">Diferenciado (cor suave)</select></label>
+<label>Sustain nos acordes<input type="checkbox" data-k="susCh"></label>
+<h3>Acordes</h3>
+<label>Mostrar<select data-k="cd"><option value="sym">Só cifra<option value="notes">Cifra + notas</select></label>
+<label>Notação<select data-k="nt"><option value="pop">Internacional (Cmaj7)<option value="br">Brasileira (C7M)</select></label>
+<label>Tamanho<input type="range" data-k="csz" min="20" max="90"></label>
+<label>Permanência (s)<select data-k="hold"><option>0<option>1<option>2<option>3<option value="9999">Até o próximo</select></label>
+<h3>Vídeo e sincronia</h3>
+<label>Proporção<select data-k="asp"><option value="16:9">16:9<option value="9:16">9:16</select></label>
+<label>Latência vídeo × MIDI (ms)<input type="range" data-k="lat" min="0" max="500"></label>
+<h3>Câmera (local ou remota)</h3>
+<label>Foco<select id="fm"><option value="c">Automático<option value="s">Travar<option value="m">Manual</select></label>
+<label>Distância do foco (m)<input type="range" id="fd" min=".05" max="2" step=".05" value=".5"></label>
+<label>Exposição (EV)<input type="range" id="ev" min="-3" max="3" step=".5" value="0"></label>
+<label>Travar exposição<input type="checkbox" id="ael"></label>
+<label>Balanço de branco<select id="wb"><option value="a">Auto<option value="5500">Luz do dia 5500K<option value="6500">Nublado 6500K<option value="3200">Quente 3200K<option value="4000">Fluorescente 4000K</select></label>
+<label>Lanterna<input type="checkbox" id="tq"></label>
+<label>Espelhar imagem<input type="checkbox" data-k="mir"></label>
+<label>Girar 180°<input type="checkbox" data-k="r180"></label>
+<h3>Áudio, tempo e arquivos</h3>
+<label>Contagem antes do REC (s)<select data-k="cdn"><option>0<option>3<option>5<option>10</select></label>
+<label>Metrônomo<input type="checkbox" id="mt"></label>
+<label>BPM<input type="range" data-k="bpm" min="40" max="240"></label>
+<label>Rótulos nos Dós<input type="checkbox" data-k="lab"></label>
+<label>Salvar .mid junto<input type="checkbox" data-k="mid"></label>
+<h3>Câmera remota</h3>
+<small>1. No outro celular, abra o app em “Modo Câmera Remota” e toque em Gerar código. 2. Cole o código aqui.</small>
+<textarea id="sIn" placeholder="Código do celular da câmera"></textarea><button class="g" id="sGo">Gerar resposta</button>
+<textarea id="sOut" readonly placeholder="Resposta: copie e cole no celular da câmera"></textarea><button class="g" id="sCp">Copiar resposta</button>
+<br><br><button class="g" id="cls">Fechar</button></div></div>
+<div id="cm" class="scr"><video id="pv" muted playsinline autoplay></video><div class="box pad"><div id="cs" style="color:var(--mu)">Câmera pronta. Gere o código para parear.</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="g" data-z=".5">0,5x</button><button class="g" data-z="1">1x</button><button class="g" data-z="2">2x</button><button class="g" data-z="3">3x</button><button class="g" id="cyc2">Trocar lente</button></div>
+<button class="g" id="cGen">Gerar código</button><textarea id="cOut" readonly placeholder="Código: copie e cole no celular do estúdio" style="background:#0B0D12;border-radius:8px;border:1px solid #2a3347;height:60px"></textarea><button class="g" id="cCp">Copiar código</button>
+<textarea id="cIn" placeholder="Cole aqui a resposta do estúdio" style="background:#0B0D12;border-radius:8px;border:1px solid #2a3347;height:60px"></textarea><button class="g" id="cOk">Conectar</button></div></div>
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const D={keys:61,kw:.86,kh:.26,kx:.5,ky:.76,tilt:34,rot:0,color:'#38bdf8',wheels:true,sus:'ignore',susCh:false,cd:'notes',nt:'pop',csz:44,hold:1,asp:'16:9',lat:0,cx:.5,cy:.16,mir:false,r180:false,cdn:0,bpm:92,lab:false,mid:true};
+const S=Object.assign({},D,JSON.parse(localStorage.kc||'{}'));const save=()=>localStorage.kc=JSON.stringify(S);
+const RANGE={37:[36,72],49:[36,84],61:[36,96],76:[28,103],88:[21,108]},BL=[1,3,6,8,10];
+const cv=$('#cv'),x=cv.getContext('2d'),v=$('#v'),rv=$('#rv');
+let stream,mic,src='local',recorder,chunks=[],t0=0,tInt,devs=[],di=0,pc,dc,locked=true;
+let ev=[];const held=new Set,sust=new Set,lv={};let sus=false,pb=.5,mod=0,shown=null,expire=0,dt;
+const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(t._);t._=setTimeout(()=>t.style.display='none',2600)};
+const show=id=>$$('.scr').forEach(e=>e.classList.toggle('on',e.id==id));
+function setAsp(){const p=S.asp=='9:16';cv.width=p?720:1280;cv.height=p?1280:720}
+/* ---- câmera ---- */
+async function openCam(id){stream?.getTracks().forEach(t=>t.stop());
+ try{stream=await navigator.mediaDevices.getUserMedia({video:Object.assign({width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:30}},id?{deviceId:{exact:id}}:{facingMode:'environment'}),audio:false})}catch(e){toast('Sem acesso à câmera: libere a permissão.');throw e}
+ v.srcObject=stream;$('#pv').srcObject=stream;devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind=='videoinput')}
+const cycle=()=>{if(!devs.length)return;di=(di+1)%devs.length;openCam(devs[di].deviceId);toast(devs[di].label||'Câmera '+(di+1))};
+async function localZoom(z){const tr=stream?.getVideoTracks()[0],c=tr?.getCapabilities?.().zoom;
+ if(c&&z>=c.min){await tr.applyConstraints({advanced:[{zoom:Math.min(z,c.max)}]});return}
+ if(z<1){const u=devs.find(d=>/ultra|0[.,]5|wide/i.test(d.label));if(u){await openCam(u.deviceId);return}}
+ toast(z<1?'Este aparelho não oferece 0,5x pelo navegador.':'Zoom indisponível nesta câmera.')}
+function zoom(z){z=+z;if(src=='remote'&&dc?.readyState=='open')dc.send(JSON.stringify({z}));else localZoom(z)}
+async function initMic(){try{mic=(await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:2}})).getAudioTracks()[0]}catch{toast('Sem áudio: a gravação sairá muda.')}}
+/* ---- MIDI ---- */
+async function initMidi(){if(!navigator.requestMIDIAccess){$('#mb').textContent='MIDI não suportado';return}
+ try{const a=await navigator.requestMIDIAccess();const bind=()=>{let n=0;a.inputs.forEach(i=>{i.onmidimessage=m=>setTimeout(()=>midi(m.data),S.lat);n++});$('#mb').textContent=n?'MIDI ●':'MIDI —'};a.onstatechange=bind;bind()}catch{$('#mb').textContent='MIDI negado'}}
+function midi([s,a,b]){const t=s&240;if(recorder&&s>=128&&s<240)ev.push([Date.now()-t0,s,a,b]);
+ if(t==144&&b>0){held.add(a);sust.delete(a);lv[a]=b}
+ else if(t==128||t==144){held.delete(a);if(sus)sust.add(a)}
+ else if(t==176){if(a==64){sus=b>=64;if(!sus)sust.clear()}else if(a==1)mod=b/127}
+ else if(t==224)pb=((b<<7)|a)/16383;
+ clearTimeout(dt);dt=setTimeout(upd,35)}
+function vis(n){if(held.has(n))return .4+.6*((lv[n]||100)/127);return S.sus!='ignore'&&sust.has(n)?(S.sus=='dual'?.3:1):0}
+/* ---- acordes ---- */
+const T=[['',[0,4,7]],['m',[0,3,7]],['dim',[0,3,6]],['aug',[0,4,8]],['sus2',[0,2,7]],['sus4',[0,5,7]],['5',[0,7]],['6',[0,4,7,9]],['m6',[0,3,7,9]],['7',[0,4,7,10]],['maj7',[0,4,7,11]],['m7',[0,3,7,10]],['m(maj7)',[0,3,7,11]],['dim7',[0,3,6,9]],['m7(b5)',[0,3,6,10]],['add9',[0,2,4,7]],['9',[0,2,4,7,10]],['9',[0,2,4,10]],['maj9',[0,2,4,7,11]],['m9',[0,2,3,7,10]],['m9',[0,2,3,10]],['7(b9)',[0,1,4,7,10]],['7(b9)',[0,1,4,10]],['7(#9)',[0,3,4,7,10]],['7(#11)',[0,4,6,7,10]],['7sus4',[0,5,7,10]],['7(b5)',[0,4,6,10]],['aug7',[0,4,8,10]],['11',[0,2,5,7,10]],['m11',[0,2,3,5,7,10]],['13',[0,2,4,9,10]],['6/9',[0,2,4,7,9]],['m6/9',[0,2,3,7,9]],['add11',[0,4,5,7]],['m(add9)',[0,2,3,7]],['m(add11)',[0,3,5,7]],['m7(b9)',[0,1,3,7,10]],['m9(b5)',[0,2,3,6,10]],['maj7(#5)',[0,4,8,11]],['maj7(#11)',[0,4,6,7,11]],['maj9(#11)',[0,2,4,6,7,11]],['9sus4',[0,2,5,7,10]],['9(#11)',[0,2,4,6,7,10]],['9(b5)',[0,2,4,6,10]],['9(#5)',[0,2,4,8,10]],['7(b13)',[0,4,7,8,10]],['7(b9#9)',[0,1,3,4,7,10]],['7(b9b5)',[0,1,4,6,10]],['7(b9#5)',[0,1,4,8,10]],['7(#9#5)',[0,3,4,8,10]],['7(#9b5)',[0,3,4,6,10]],['7(b9b13)',[0,1,4,7,8,10]],['7(#9b13)',[0,3,4,7,8,10]],['13(b9)',[0,1,4,9,10]],['13(#9)',[0,3,4,9,10]],['13(#11)',[0,4,6,9,10]],['maj13',[0,2,4,9,11]],['m13',[0,2,3,9,10]],['13sus4',[0,2,5,9,10]],['7sus2',[0,2,7,10]],['dim(maj7)',[0,3,6,11]],['maj7(b5)',[0,4,6,11]],['m11(b5)',[0,2,3,5,6,10]]];
+const SH='C C# D D# E F F# G G# A A# B'.split(' '),FL='C Db D Eb E F Gb G Ab A Bb B'.split(' ');
+function detect(ns){ns=[...ns].sort((a,b)=>a-b);const pcs=[...new Set(ns.map(n=>n%12))];if(pcs.length<2||(pcs.length<3&&!(pcs.length==2&&(pcs[1]-pcs[0]==7||pcs[0]-pcs[1]==7))))return null;
+ const bass=ns[0]%12;let best=null;
+ for(const r of [bass,...pcs.filter(p=>p!=bass)]){const rel=pcs.map(p=>(p-r+12)%12).sort((a,b)=>a-b);
+  const m=T.find(([,iv])=>iv.length==rel.length&&iv.every((k,i)=>k==rel[i]));
+  if(m){best={r,q:m[0]};break}}
+ const flat=best?/^m|dim|b5/.test(best.q)||[5,10,3,8,1].includes(best.r):false,N=flat?FL:SH;
+ if(!best)return{sym:pcs.map(p=>N[p]).join('-'),notes:''};
+ let q=best.q;if(S.nt=='br')q=q.replace('maj7','7M').replace('maj9','9M').replace('dim7','°7').replace('dim','°');
+ let sym=N[best.r]+q;if(bass!=best.r)sym+='/'+N[bass];
+ const order=[best.r,...ns.map(n=>n%12).filter(p=>p!=best.r)];
+ return{sym,notes:[...new Set(order)].map(p=>N[p]).join('-')}}
+function upd(){const ns=[...held,...(S.susCh?sust:[])],h=detect(ns);
+ if(h){shown=h;expire=Infinity}else if(shown&&expire==Infinity)expire=performance.now()+S.hold*1000}
+/* ---- desenho ---- */
+function kb(W,H){const[lo,hi]=RANGE[S.keys],wh=[],bk=[];let wi=0;
+ for(let n=lo;n<=hi;n++)BL.includes(n%12)?bk.push([n,wi]):wh.push([n,wi++]);
+ const nw=wi,kw=S.kw*W,kh=S.kh*H,k=S.tilt/100*.55,P=(u,d)=>[(u-.5)*kw*(1-k*(1-d)),(d-.5)*kh];
+ const q=(a,b,d0,d1,dy=0)=>{const p=[P(a,d0),P(b,d0),P(b,d1),P(a,d1)];x.beginPath();p.forEach(([X,Y],i)=>i?x.lineTo(X,Y+dy):x.moveTo(X,Y+dy));x.closePath()};
+ x.save();x.translate(S.kx*W,S.ky*H);x.rotate(S.rot*Math.PI/180);
+ if(S.wheels){const wx=-kw/2-92,wh2=kh*.9;[0,1].forEach(i=>{const X=wx+i*40,pos=i?(1-mod)*wh2:(.5-(pb-.5)*.9)*wh2;x.fillStyle='#262a33';x.beginPath();x.roundRect(X,-kh/2,32,wh2,10);x.fill();x.fillStyle=S.color;x.globalAlpha=.9;x.fillRect(X+4,-kh/2+Math.max(4,Math.min(wh2-8,pos)),24,4);x.globalAlpha=1;x.fillStyle='#8b95a7';x.font='10px sans-serif';x.fillText(i?'MOD':'PITCH',X-2,-kh/2+wh2+13)})}
+ const g=x.createLinearGradient(0,-kh/2,0,kh/2);g.addColorStop(0,'#cdc9c0');g.addColorStop(1,'#fbfaf6');
+ x.shadowColor='#0009';x.shadowBlur=16;
+ wh.forEach(([n,i],j)=>{const a=i/nw,b=(i+1)/nw,vs=vis(n),dy=vs*kh*.03;x.fillStyle='#aaa59b';q(a,b,1,1.05,dy);x.fill();x.shadowBlur=0;x.fillStyle=g;q(a,b,0,1,dy);x.fill();if(vs){x.globalAlpha=.8*vs;x.fillStyle=S.color;q(a,b,0,1,dy);x.fill();x.globalAlpha=1}x.strokeStyle='#0003';x.stroke();if(S.lab&&n%12==0){x.fillStyle='#555';x.font=kh/10+'px sans-serif';const[px,py]=P((a+b)/2,.92);x.fillText('C'+(n/12-1),px-kh/20,py+dy)}});
+ const bg=x.createLinearGradient(0,-kh/2,0,kh*.1);bg.addColorStop(0,'#2a2d36');bg.addColorStop(1,'#0e1015');
+ bk.forEach(([n,i])=>{const c=i/nw,a=c-.3/nw,b=c+.3/nw,vs=vis(n);x.fillStyle=bg;q(a,b,0,.62,vs*kh*.02);x.fill();if(vs){x.globalAlpha=.85*vs;x.fillStyle=S.color;q(a,b,0,.62,vs*kh*.02);x.fill();x.globalAlpha=1}});
+ x.restore()}
+function chord(W,H){if(!shown||performance.now()>expire)return;const f=S.csz*H/720,fx=`700 ${f}px Inter,system-ui,sans-serif`;
+ x.save();x.shadowColor='#000d';x.shadowBlur=f/3;x.textBaseline='middle';x.font=fx;const w1=x.measureText(shown.sym).width;
+ const sub=S.cd=='notes'&&shown.notes?`(${shown.notes})`:'',f2=`500 ${f*.55}px Inter,system-ui,sans-serif`;x.font=f2;const w2=sub?x.measureText(sub).width+f*.3:0;
+ let X=S.cx*W-(w1+w2)/2;x.font=fx;x.fillStyle='#f7f8fb';x.fillText(shown.sym,X,S.cy*H);x.font=f2;x.fillStyle='#b7c0ce';x.fillText(sub,X+w1+f*.3,S.cy*H+f*.05);x.restore()}
+function loop(){const W=cv.width,H=cv.height,el=src=='remote'?rv:v;x.fillStyle='#000';x.fillRect(0,0,W,H);
+ if(el.videoWidth){const r=Math.max(W/el.videoWidth,H/el.videoHeight),w=el.videoWidth*r,h=el.videoHeight*r;x.save();x.translate(W/2,H/2);if(S.r180)x.rotate(Math.PI);if(S.mir)x.scale(-1,1);x.drawImage(el,-w/2,-h/2,w,h);x.restore()}
+ kb(W,H);chord(W,H);requestAnimationFrame(loop)}
+/* mover teclado/cifra com o dedo */
+let drag;cv.onpointerdown=e=>{if(recorder||locked)return;const r=cv.getBoundingClientRect();drag=((e.clientY-r.top)/r.height>.4)?'k':'c';cv.setPointerCapture(e.pointerId)};
+cv.onpointermove=e=>{if(!drag)return;const r=cv.getBoundingClientRect();let X=(e.clientX-r.left)/r.width,Y=(e.clientY-r.top)/r.height;if(Math.abs(X-.5)<.02)X=.5;
+ if(drag=='k'){S.kx=X;S.ky=Y}else{S.cx=X;S.cy=Y}};cv.onpointerup=()=>{drag=0;save()};
+/* ---- gravação ---- */
+function fmt(s){return String(s/60|0).padStart(2,'0')+':'+String(s%60|0).padStart(2,'0')}
+function rec(){if(recorder){recorder.stop();return}
+ if(S.cdn&&!rec.go){let n=S.cdn;toast(n);const id=setInterval(()=>{if(--n<=0){clearInterval(id);rec.go=1;rec();rec.go=0}else toast(n)},1000);return}
+ ev=[];
+ const cs=cv.captureStream(30);if(mic)cs.addTrack(mic);
+ const mt=['video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9,opus','video/webm'].find(t=>MediaRecorder.isTypeSupported(t));
+ recorder=new MediaRecorder(cs,{mimeType:mt,videoBitsPerSecond:12e6});chunks=[];recorder.ondataavailable=e=>e.data.size&&chunks.push(e.data);
+ recorder.onstop=()=>{clearInterval(tInt);const ext=mt.includes('mp4')?'mp4':'webm',a=document.createElement('a');a.href=URL.createObjectURL(new Blob(chunks,{type:mt}));a.download='KeyCam_'+new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')+'.'+ext;a.click();if(S.mid&&ev.length){const a2=document.createElement('a');a2.href=URL.createObjectURL(smf(ev));a2.download=a.download.replace(/\.\w+$/,'.mid');setTimeout(()=>a2.click(),600)}recorder=null;$('#rec').classList.remove('on');$('#pause').hidden=true;toast('Gravação salva em Downloads')};
+ recorder.start(1000);t0=Date.now();$('#rec').classList.add('on');$('#pause').hidden=false;locked=true;$('#lock').classList.remove('on');
+ tInt=setInterval(()=>$('#tc').textContent=fmt((Date.now()-t0)/1000),500)}
+/* ---- câmera remota (pareamento por código, sem internet) ---- */
+const enc=o=>btoa(JSON.stringify(o)),dec=t=>JSON.parse(atob(t.trim()));
+const gather=p=>new Promise(r=>{if(p.iceGatheringState=='complete')return r();p.onicegatheringstatechange=()=>p.iceGatheringState=='complete'&&r();setTimeout(r,3000)});
+const cp=id=>navigator.clipboard.writeText($(id).value).then(()=>toast('Copiado'));
+$('#cGen').onclick=async()=>{pc=new RTCPeerConnection({iceServers:[]});dc=pc.createDataChannel('c');dc.onmessage=e=>{const m=JSON.parse(e.data);if(m.z)localZoom(m.z);if(m.a)cam(m.a)};
+ stream.getTracks().forEach(t=>pc.addTrack(t,stream));pc.onconnectionstatechange=()=>$('#cs').textContent={connected:'TRANSMITINDO para o estúdio',failed:'Falhou: confira se os dois estão na mesma rede.'}[pc.connectionState]||'Conectando…';
+ await pc.setLocalDescription(await pc.createOffer());await gather(pc);$('#cOut').value=enc(pc.localDescription)};
+$('#cOk').onclick=async()=>{try{await pc.setRemoteDescription(dec($('#cIn').value))}catch{toast('Código inválido.')}};
+$('#sGo').onclick=async()=>{try{pc=new RTCPeerConnection({iceServers:[]});pc.ondatachannel=e=>dc=e.channel;
+ pc.ontrack=e=>{rv.srcObject=e.streams[0];src='remote';$('#sb').textContent='REMOTA'};
+ await pc.setRemoteDescription(dec($('#sIn').value));await pc.setLocalDescription(await pc.createAnswer());await gather(pc);$('#sOut').value=enc(pc.localDescription)}catch{toast('Código inválido.')}};
+$('#sCp').onclick=()=>cp('#sOut');$('#cCp').onclick=()=>cp('#cOut');
+/* ---- interface ---- */
+$$('[data-k]').forEach(e=>{const k=e.dataset.k;e.type=='checkbox'?e.checked=S[k]:e.value=S[k];
+ e.oninput=()=>{S[k]=e.type=='checkbox'?e.checked:e.type=='range'?+e.value:(isNaN(e.value)||e.type=='color'?e.value:+e.value);if(k=='asp')setAsp();save()}});
+$$('[data-z]').forEach(b=>b.onclick=()=>zoom(b.dataset.z));
+$('#goS').onclick=async()=>{show('st');setAsp();try{await openCam()}catch{}initMic().then(vu);initMidi();loop();navigator.wakeLock?.request('screen').catch(()=>{})};
+$('#goC').onclick=async()=>{show('cm');try{await openCam()}catch{}navigator.wakeLock?.request('screen').catch(()=>{})};
+$('#rec').onclick=rec;$('#cyc').onclick=cycle;$('#cyc2').onclick=cycle;$('#cfg').onclick=()=>$('#sheet').classList.add('on');$('#cls').onclick=()=>$('#sheet').classList.remove('on');
+$('#pause').onclick=()=>{if(recorder.state=='recording'){recorder.pause();$('#pause').textContent='Retomar'}else{recorder.resume();$('#pause').textContent='Pausar'}};
+$('#lock').onclick=()=>{if(recorder)return toast('Travado durante a gravação');locked=!locked;$('#lock').classList.toggle('on',!locked);$('#lock').textContent=locked?'Mover':'Travar'};
+/* ---- etapa 2 ---- */
+const cam=a=>{if(src=='remote'&&dc?.readyState=='open')dc.send(JSON.stringify({a}));else stream?.getVideoTracks()[0]?.applyConstraints({advanced:[a]}).catch(()=>toast('Este aparelho não aceita esse ajuste.'))};
+const fmode=()=>{const m=$('#fm').value;cam(m=='c'?{focusMode:'continuous'}:m=='s'?{focusMode:'single-shot'}:{focusMode:'manual',focusDistance:+$('#fd').value})};
+$('#fm').onchange=fmode;$('#fd').oninput=fmode;
+$('#ev').oninput=()=>cam({exposureCompensation:+$('#ev').value});
+$('#ael').onchange=()=>cam({exposureMode:$('#ael').checked?'manual':'continuous'});
+$('#wb').onchange=()=>{const w=$('#wb').value;cam(w=='a'?{whiteBalanceMode:'continuous'}:{whiteBalanceMode:'manual',colorTemperature:+w})};
+$('#tq').onchange=()=>cam({torch:$('#tq').checked});
+function vu(){if(!mic)return;const ac=new AudioContext(),an=ac.createAnalyser();an.fftSize=512;ac.createMediaStreamSource(new MediaStream([mic])).connect(an);const b=new Uint8Array(512);(function f(){an.getByteTimeDomainData(b);let m=0;for(const s of b)m=Math.max(m,Math.abs(s-128));$('#vb').style.height=Math.min(100,m/128*140)+'%';requestAnimationFrame(f)})()}
+let mi,ac2;$('#mt').onchange=e=>{clearInterval(mi);if(!e.target.checked)return;ac2=ac2||new AudioContext();let n=0;const clk=()=>{const o=ac2.createOscillator(),g=ac2.createGain(),t=ac2.currentTime;o.frequency.value=n++%4?800:1200;g.gain.setValueAtTime(.3,t);g.gain.exponentialRampToValueAtTime(.001,t+.06);o.connect(g).connect(ac2.destination);o.start(t);o.stop(t+.07)};clk();mi=setInterval(clk,60000/S.bpm)};
+function smf(e){const o=[],vl=n=>{const b=[n&127];while(n>>=7)b.unshift((n&127)|128);return b};let last=0;
+ e.forEach(([t,s,a,b])=>{const k=Math.round(t*.96),t4=s&240;o.push(...vl(k-last),s,a,...(t4==192||t4==208?[]:[b]));last=k});
+ const tk=[0,255,81,3,7,161,32,...o,0,255,47,0],L=tk.length;
+ return new Blob([new Uint8Array([77,84,104,100,0,0,0,6,0,0,0,1,1,224,77,84,114,107,L>>24&255,L>>16&255,L>>8&255,L&255,...tk])],{type:'audio/midi'})}
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
+</script></body></html>
